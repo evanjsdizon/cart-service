@@ -1,0 +1,69 @@
+plugins {
+	id 'java'
+	id 'jacoco'
+	id "com.diffplug.spotless" version "6.12.0"
+	id 'org.springframework.boot' version '3.0.0'
+	id 'io.spring.dependency-management' version '1.1.0'
+}
+
+group = 'com.mycompany'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'com.h2database:h2'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+spotless {
+	java {
+		googleJavaFormat('1.15.0')
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+jacoco {
+	toolVersion = "0.8.8"
+	reportsDirectory = layout.buildDirectory.dir('/jacoco')
+}
+
+test {
+	finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+	dependsOn test
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+					"com/mycompany/cart/*Application.*",
+					"com/mycompany/cart/model/*",
+					"com/mycompany/cart/dto/*.*"
+			])
+		}))
+	}
+}
+
+tasks.register('fatJar', Jar) {
+	manifest {
+		attributes 'Main-Class': 'com.mycompany.cart.ShoppingCartApplication'
+	}
+	from sourceSets.main.output
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	dependsOn configurations.runtimeClasspath
+	from {
+		configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
+	}
+}
+
